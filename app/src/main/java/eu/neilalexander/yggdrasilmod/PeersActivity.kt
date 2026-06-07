@@ -15,6 +15,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.CompoundButton
 import android.widget.Switch
 import android.widget.TableLayout
 import android.widget.TableRow
@@ -202,20 +203,17 @@ class PeersActivity : AppCompatActivity() {
 
                     view.findViewById<TextView>(R.id.addressValue).text = peer
 
-                    // Кружок: зелёный = активен, красный = отключён
-                    val toggleButton = view.findViewById<ImageButton>(R.id.togglePeerButton)
-                    toggleButton.setImageResource(
-                        if (isActive) R.drawable.ic_peer_active else R.drawable.ic_peer_disabled
-                    )
-                    toggleButton.setOnClickListener {
+                    // Тумблер: включён = активен, выключен = отключён
+                    val toggleSwitch = view.findViewById<Switch>(R.id.togglePeerSwitch)
+                    toggleSwitch.isChecked = isActive
+                    toggleSwitch.setOnCheckedChangeListener { _, checked ->
                         val newDisabled = getDisabledPeers()
-                        if (isActive) {
-                            newDisabled.add(peer)
-                        } else {
+                        if (checked) {
                             newDisabled.remove(peer)
+                        } else {
+                            newDisabled.add(peer)
                         }
                         setDisabledPeers(newDisabled)
-                        updateConfiguredPeers()
                     }
 
                     // Кнопка удаления
