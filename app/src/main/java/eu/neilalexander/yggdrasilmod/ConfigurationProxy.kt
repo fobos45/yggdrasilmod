@@ -10,13 +10,23 @@ object ConfigurationProxy {
     private lateinit var json: JSONObject
     private lateinit var file: File
 
+    // Полный список всех пиров (включая отключённые) хранится отдельно
+    private lateinit var allPeersFile: File
+
     operator fun invoke(applicationContext: Context): ConfigurationProxy {
         file = File(applicationContext.filesDir, "yggdrasil.conf")
+        allPeersFile = File(applicationContext.filesDir, "all_peers.json")
         if (!file.exists()) {
             val conf = Mobile.generateConfigJSON()
             if (file.createNewFile()) {
                 file.writeBytes(conf)
             }
+        }
+        if (!allPeersFile.exists()) {
+            // Инициализируем список всех пиров из текущего конфига
+            val conf = JSONObject(file.readText(Charsets.UTF_8))
+            val peers = conf.optJSONArray("Peers") ?: JSONArray()
+            allPeersFile.writeText(peers.toString(), Charsets.UTF_8)
         }
         fix()
         return this
@@ -25,6 +35,7 @@ object ConfigurationProxy {
     fun resetJSON() {
         val conf = Mobile.generateConfigJSON()
         file.writeBytes(conf)
+        allPeersFile.writeText("[]", Charsets.UTF_8)
         fix()
     }
 
@@ -39,6 +50,27 @@ object ConfigurationProxy {
         updateJSON { json ->
             json.put("PrivateKey", privateKey)
         }
+    }
+
+    // Возвращает ВСЕ пиры (активные + отключённые)
+    fun getAllPeers(): List<String> {
+        val arr = JSONArray(allPeersFile.readText(Charsets.UTF_8))
+        return (0 until arr.length()).map { arr.getString(it) }
+    }
+
+    fun addPeer(uri: String) {
+        val arr = JSONArray(allPeersFile.readText(Charsets.UTF_8))
+        arr.put(uri)
+        allPeersFile.writeText(arr.toString(), Charsets.UTF_8)
+    }
+
+    fun removePeer(uri: String) {
+        val arr = JSONArray(allPeersFile.readText(Charsets.UTF_8))
+        val newArr = JSONArray()
+        for (i in 0 until arr.length()) {
+            if (arr.getString(i) != uri) newArr.put(arr.getString(i))
+        }
+        allPeersFile.writeText(newArr.toString(), Charsets.UTF_8)
     }
 
     fun updateJSON(fn: (JSONObject) -> Unit) {

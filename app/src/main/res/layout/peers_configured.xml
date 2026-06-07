@@ -6,13 +6,26 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
+    <ImageButton
+        android:id="@+id/togglePeerButton"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@android:color/transparent"
+        android:padding="2dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <TextView
         android:id="@+id/addressValue"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="8dp"
         android:layout_marginTop="4dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginBottom="4dp"
         android:gravity="center_vertical"
         android:ellipsize="end"
@@ -21,7 +34,7 @@
         android:textColor="?attr/textDefault"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/deletePeerButton"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/togglePeerButton"
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
@@ -37,4 +50,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_baseline_remove_circle_24" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

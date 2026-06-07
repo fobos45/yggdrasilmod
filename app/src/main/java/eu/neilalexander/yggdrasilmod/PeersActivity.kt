@@ -22,12 +22,14 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.preference.PreferenceManager
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URI
 
+const val KEY_DISABLED_PEERS = "disabled_peers"
 
 class PeersActivity : AppCompatActivity() {
     private lateinit var config: ConfigurationProxy
@@ -42,6 +44,34 @@ class PeersActivity : AppCompatActivity() {
     private lateinit var multicastBeaconSwitch: Switch
     private lateinit var passwordEdit: EditText
     private lateinit var addPeerButton: ImageButton
+
+    // Хранит URI отключённых пиров
+    private fun getDisabledPeers(): MutableSet<String> {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        return prefs.getStringSet(KEY_DISABLED_PEERS, emptySet())!!.toMutableSet()
+    }
+
+    private fun setDisabledPeers(disabled: Set<String>) {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        prefs.edit().putStringSet(KEY_DISABLED_PEERS, disabled).apply()
+        // Синхронизируем конфиг Yggdrasil: убираем отключённые пиры
+        syncPeersToConfig()
+    }
+
+    // Синхронизирует активные пиры в конфиг (только те, что не в disabled)
+    private fun syncPeersToConfig() {
+        val allPeers = config.getAllPeers()
+        val disabled = getDisabledPeers()
+        config.updateJSON { json ->
+            val activePeers = JSONArray()
+            for (peer in allPeers) {
+                if (peer !in disabled) {
+                    activePeers.put(peer)
+                }
+            }
+            json.put("Peers", activePeers)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,9 +143,9 @@ class PeersActivity : AppCompatActivity() {
             builder.setTitle(getString(R.string.peers_add_peer))
             builder.setView(view)
             builder.setPositiveButton(getString(R.string.peers_add)) { dialog, _ ->
-                config.updateJSON { json ->
-                    json.getJSONArray("Peers").put(input.text.toString().trim())
-                }
+                val newPeer = input.text.toString().trim()
+                config.addPeer(newPeer)
+                syncPeersToConfig()
                 dialog.dismiss()
                 updateConfiguredPeers()
             }
@@ -152,9 +182,10 @@ class PeersActivity : AppCompatActivity() {
     }
 
     private fun updateConfiguredPeers() {
-        val peers = config.getJSON().getJSONArray("Peers")
+        val allPeers = config.getAllPeers()
+        val disabled = getDisabledPeers()
 
-        when (peers.length()) {
+        when (allPeers.size) {
             0 -> {
                 configuredTableLayout.visibility = View.GONE
                 configuredTableLabel.text = getString(R.string.peers_no_configured_title)
@@ -164,19 +195,41 @@ class PeersActivity : AppCompatActivity() {
                 configuredTableLabel.text = getString(R.string.peers_configured_title)
 
                 configuredTableLayout.removeAllViewsInLayout()
-                for (i in 0 until peers.length()) {
-                    val peer = peers[i].toString()
+                for (i in allPeers.indices) {
+                    val peer = allPeers[i]
+                    val isActive = peer !in disabled
                     val view = inflater.inflate(R.layout.peers_configured, null)
-                    view.findViewById<TextView>(R.id.addressValue).text = peer
-                    view.findViewById<ImageButton>(R.id.deletePeerButton).tag = i
 
-                    view.findViewById<ImageButton>(R.id.deletePeerButton).setOnClickListener { button ->
+                    view.findViewById<TextView>(R.id.addressValue).text = peer
+
+                    // Кружок: зелёный = активен, красный = отключён
+                    val toggleButton = view.findViewById<ImageButton>(R.id.togglePeerButton)
+                    toggleButton.setImageResource(
+                        if (isActive) R.drawable.ic_peer_active else R.drawable.ic_peer_disabled
+                    )
+                    toggleButton.setOnClickListener {
+                        val newDisabled = getDisabledPeers()
+                        if (isActive) {
+                            newDisabled.add(peer)
+                        } else {
+                            newDisabled.remove(peer)
+                        }
+                        setDisabledPeers(newDisabled)
+                        updateConfiguredPeers()
+                    }
+
+                    // Кнопка удаления
+                    val deleteButton = view.findViewById<ImageButton>(R.id.deletePeerButton)
+                    deleteButton.tag = i
+                    deleteButton.setOnClickListener {
                         val builder: AlertDialog.Builder = AlertDialog.Builder(ContextThemeWrapper(this, R.style.YggdrasilDialogs))
                         builder.setTitle(getString(R.string.peers_remove_title, peer))
                         builder.setPositiveButton(getString(R.string.peers_remove)) { dialog, _ ->
-                            config.updateJSON { json ->
-                                json.getJSONArray("Peers").remove(button.tag as Int)
-                            }
+                            val newDisabled = getDisabledPeers()
+                            newDisabled.remove(peer)
+                            setDisabledPeers(newDisabled)
+                            config.removePeer(peer)
+                            syncPeersToConfig()
                             dialog.dismiss()
                             updateConfiguredPeers()
                         }
@@ -185,6 +238,7 @@ class PeersActivity : AppCompatActivity() {
                         }
                         builder.show()
                     }
+
                     configuredTableLayout.addView(view)
                 }
             }
@@ -203,7 +257,6 @@ class PeersActivity : AppCompatActivity() {
                 for (peer in peers) {
                     val view = inflater.inflate(R.layout.peers_connected, null)
                     val ip = peer.getString("IP")
-                    // Only connected peers have IPs
                     if (ip.isNotEmpty()) {
                         view.findViewById<TextView>(R.id.addressLabel).text = ip
                         view.findViewById<TextView>(R.id.detailsLabel).text = peer.getString("URI")
@@ -252,14 +305,12 @@ class PeersActivity : AppCompatActivity() {
                 "state" -> {
                     if (intent.hasExtra("peers")) {
                         val peers1 = intent.getStringExtra("peers")
-                        //Log.i("PeersActivity", "Peers json: $peers1")
                         val peersArray = JSONArray(peers1 ?: "[]")
                         val array = Array(peersArray.length()) { i ->
                             peersArray.getJSONObject(i)
                         }
                         array.sortWith(compareBy { it.getString("IP") })
                         peers = array
-
                         updateConnectedPeers()
                     }
                 }
