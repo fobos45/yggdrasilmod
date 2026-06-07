@@ -1,5 +1,7 @@
 package eu.neilalexander.yggdrasil
 
+import eu.neilalexander.yggdrasilmod.R
+
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.SharedPreferences

@@ -1,5 +1,7 @@
 package eu.neilalexander.yggdrasil
 
+import eu.neilalexander.yggdrasilmod.R
+
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build

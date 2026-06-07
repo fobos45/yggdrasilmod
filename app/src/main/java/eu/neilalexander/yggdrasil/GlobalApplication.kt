@@ -1,5 +1,7 @@
 package eu.neilalexander.yggdrasil
 
+import eu.neilalexander.yggdrasilmod.R
+
 import android.app.*
 import android.content.ComponentName
 import android.content.Context
