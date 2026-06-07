@@ -17,13 +17,11 @@ android {
     }
 
     signingConfigs {
-        create("yggdrasil") {
-            // You need to specify either an absolute path or include the
-            // keystore file in the same directory as the build.gradle file.
-            storeFile = file("gha.jks")
-            storePassword = "g1thub4ct10n34yggdr4s1l4ndr01d"
-            keyAlias = "yggdrasil-android"
-            keyPassword = "g1thub4ct10n34yggdr4s1l4ndr01d"
+        create("release") {
+            storeFile = file("yggdrasilmod.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 
@@ -31,11 +29,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-        yggdrasil {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig = signingConfigs.getByName("yggdrasil")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
