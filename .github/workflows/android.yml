@@ -55,14 +55,19 @@ jobs:
       env:
         ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
-    - name: Build APK (debug)
+    - name: Build and sign APK
       run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/yggdrasilmod.jks
         chmod +x gradlew
-        ./gradlew assembleRelease
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=$(pwd)/app/yggdrasilmod.jks \
+          -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: yggdrasilmod-apk
-        path: app/build/outputs/apk/release/app-release-unsigned.apk
+        path: app/build/outputs/apk/release/app-release.apk
         retention-days: 30
