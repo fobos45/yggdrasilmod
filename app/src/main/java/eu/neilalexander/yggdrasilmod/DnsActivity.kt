@@ -124,7 +124,7 @@ class DnsActivity : AppCompatActivity() {
                 serversTableLayout.removeAllViewsInLayout()
                 for (i in servers.indices) {
                     val server = servers[i]
-                    val view = inflater.inflate(R.layout.peers_configured, null)
+                    val view = inflater.inflate(R.layout.dns_configured, null)
                     view.findViewById<TextView>(R.id.addressValue).text = server
                     view.findViewById<ImageButton>(R.id.deletePeerButton).tag = i
 
